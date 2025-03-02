@@ -1,0 +1,6 @@
+# 重定向示例 - 可根据需要自定义
+# /old-page    /new-page    301
+# /legacy/*    /new/:splat   301
+
+# 确保 SPA 路由能正确工作
+/*    /index.html   200 

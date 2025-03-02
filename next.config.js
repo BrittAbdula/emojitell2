@@ -5,6 +5,10 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: { unoptimized: true },
+  experimental: {
+    serverComponents: false,
+  },
+  rewrites: () => Promise.resolve([]),
 };
 
 module.exports = nextConfig;
