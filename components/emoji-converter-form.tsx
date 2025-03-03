@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,6 +27,7 @@ import { translateText, TranslationMode } from "@/lib/api";
 import { Copy, Save, Share2, Loader2, RefreshCw, BookOpen } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { AnimatedEmoji } from "@/components/animated-emoji";
 
 interface EmojiConverterFormProps {
   customEmojis?: Record<string, string[]>;
@@ -40,6 +41,7 @@ export function EmojiConverterForm({ customEmojis = {} }: EmojiConverterFormProp
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("translation-result");
   const [apiError, setApiError] = useState<string | null>(null);
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const { toast } = useToast();
 
   // 示例文本
@@ -86,6 +88,10 @@ export function EmojiConverterForm({ customEmojis = {} }: EmojiConverterFormProp
             title: "Translation successful!",
             description: "Your text has been converted to emojis.",
           });
+
+          // 显示成功动画
+          setShowSuccessAnimation(true);
+          setTimeout(() => setShowSuccessAnimation(false), 3000); // 3秒后隐藏动画
         } else {
           // Fall back to client-side translation if API fails
           let fallbackText = "";
@@ -114,6 +120,10 @@ export function EmojiConverterForm({ customEmojis = {} }: EmojiConverterFormProp
             description: "API connection failed. Using local translation instead.",
             variant: "default",
           });
+
+          // 显示成功动画（即使是本地翻译）
+          setShowSuccessAnimation(true);
+          setTimeout(() => setShowSuccessAnimation(false), 3000); // 3秒后隐藏动画
         }
       } else {
         // This is a ReadableStream - process the stream
@@ -150,11 +160,15 @@ export function EmojiConverterForm({ customEmojis = {} }: EmojiConverterFormProp
             }
           }
         }
-        
-        toast({
+    
+    toast({
           title: "Translation successful!",
-          description: "Your text has been converted to emojis.",
+      description: "Your text has been converted to emojis.",
         });
+
+        // 显示成功动画
+        setShowSuccessAnimation(true);
+        setTimeout(() => setShowSuccessAnimation(false), 3000); // 3秒后隐藏动画
       }
     } catch (error) {
       console.error("Translation error:", error);
@@ -182,6 +196,10 @@ export function EmojiConverterForm({ customEmojis = {} }: EmojiConverterFormProp
         description: "API connection failed. Using local translation instead.",
         variant: "default",
       });
+
+      // 显示成功动画（即使是本地翻译）
+      setShowSuccessAnimation(true);
+      setTimeout(() => setShowSuccessAnimation(false), 3000); // 3秒后隐藏动画
     } finally {
       setIsLoading(false);
     }
@@ -248,27 +266,172 @@ export function EmojiConverterForm({ customEmojis = {} }: EmojiConverterFormProp
   };
 
   const handleSave = () => {
-    if (!inputText.trim() || !outputText.trim()) {
+    if (!outputText) return;
+    
+    try {
+      // 创建一个保存的消息对象
+      const savedMessage = {
+        id: Date.now(), // 使用时间戳作为唯一ID
+        text: outputText,
+        mode: translationMode,
+        date: new Date().toISOString(),
+      };
+      
+      // 从localStorage获取现有保存的消息
+      const savedMessages = localStorage.getItem('savedMessages');
+      let messages = savedMessages ? JSON.parse(savedMessages) : [];
+      
+      // 添加新消息到数组开头
+      messages.unshift(savedMessage);
+      
+      // 限制保存的消息数量（可选，例如最多保存20条）
+      if (messages.length > 20) {
+        messages = messages.slice(0, 20);
+      }
+      
+      // 保存回localStorage
+      localStorage.setItem('savedMessages', JSON.stringify(messages));
+      
+      // 更新保存的消息显示（如果页面上有相应元素）
+      updateSavedMessagesDisplay();
+      
+      // 显示成功消息
       toast({
-        title: "No content to save",
-        description: "Please convert some text first.",
+        title: "Message saved!",
+        description: "Your emoji message has been saved.",
+      });
+    } catch (error) {
+      console.error("Error saving translation:", error);
+      toast({
+        title: "Save failed",
+        description: "Failed to save translation.",
         variant: "destructive",
       });
+    }
+  };
+  
+  // 更新保存的消息显示
+  const updateSavedMessagesDisplay = () => {
+    // 检查保存的消息容器是否存在
+    const container = document.getElementById('saved-messages-container');
+    if (!container) return;
+    
+    // 获取保存的消息
+    const savedMessages = localStorage.getItem('savedMessages');
+    const messages = savedMessages ? JSON.parse(savedMessages) : [];
+    
+    // 清空容器
+    container.innerHTML = '';
+    
+    // 如果没有保存的消息，显示提示文本
+    if (messages.length === 0) {
+      container.innerHTML = `
+        <div class="text-center text-gray-500 dark:text-gray-400 py-8 italic">
+          You don't have any saved messages yet. Translate something and click the save button to see it here!
+        </div>
+      `;
       return;
     }
+
+    // 定义消息类型
+    interface SavedMessage {
+      id: number;
+      text: string;
+      mode: string;
+      date: string;
+    }
     
-    saveMessage({
-      originalText: inputText,
-      emojiText: outputText,
-      style: emojiStyle,
-      mode: translationMode,
+    // 遍历消息并创建元素
+    messages.forEach((message: SavedMessage) => {
+      const messageElement = document.createElement('div');
+      messageElement.className = 'bg-blue-50 dark:bg-blue-900/30 rounded-lg p-4 border border-blue-100 dark:border-blue-800';
+      
+      // 格式化日期
+      const date = new Date(message.date);
+      const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+      
+      // 设置消息内容
+      messageElement.innerHTML = `
+        <div class="flex justify-between items-start mb-2">
+          <div class="text-xs text-gray-500 dark:text-gray-400">${formattedDate}</div>
+          <div class="text-xs font-medium px-2 py-1 bg-blue-100 dark:bg-blue-800 rounded text-blue-600 dark:text-blue-300">
+            ${message.mode === 'emoji-combo' ? 'Emoji Combo' : 
+              message.mode === 'emojify' ? 'Emojify Text' : 'Line-by-Line'}
+          </div>
+        </div>
+        <div class="whitespace-pre-line text-gray-900 dark:text-gray-100 text-sm">
+          ${message.text}
+        </div>
+        <div class="flex justify-end mt-2 gap-2">
+          <button class="copy-btn text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 px-2 py-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/50" data-text="${message.text.replace(/"/g, '&quot;')}">
+            Copy
+          </button>
+          <button class="delete-btn text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/50" data-id="${message.id}">
+            Delete
+          </button>
+        </div>
+      `;
+      
+      // 添加到容器
+      container.appendChild(messageElement);
     });
+    
+    // 添加事件监听器
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const text = (e.currentTarget as HTMLElement).dataset.text || '';
+        navigator.clipboard.writeText(text)
+          .then(() => {
+            toast({
+              title: "Copied!",
+              description: "Text copied to clipboard.",
+            });
+          })
+          .catch(() => {
+            toast({
+              title: "Copy failed",
+              description: "Failed to copy text.",
+              variant: "destructive",
+            });
+          });
+      });
+    });
+    
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = (e.currentTarget as HTMLElement).dataset.id;
+        if (!id) return;
+        
+        // 获取消息并删除指定ID的消息
+        const savedMessages = localStorage.getItem('savedMessages');
+        if (!savedMessages) return;
+        
+        let messages = JSON.parse(savedMessages);
+        messages = messages.filter((m: { id: number }) => m.id.toString() !== id);
+        
+        // 保存回localStorage
+        localStorage.setItem('savedMessages', JSON.stringify(messages));
+        
+        // 更新显示
+        updateSavedMessagesDisplay();
     
     toast({
-      title: "Message saved!",
-      description: "Your emoji message has been saved.",
+          title: "Message deleted",
+          description: "Your saved message has been removed.",
+        });
+      });
     });
   };
+  
+  // 在组件挂载后加载保存的消息
+  useEffect(() => {
+    // 延迟执行以确保DOM已完全加载
+    const timer = setTimeout(() => {
+      updateSavedMessagesDisplay();
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleShare = () => {
     if (!outputText.trim()) {
@@ -312,20 +475,20 @@ export function EmojiConverterForm({ customEmojis = {} }: EmojiConverterFormProp
 
   return (
     <Card className="w-full max-w-3xl shadow-lg dark:shadow-blue-900/10">
-      <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 rounded-t-lg">
-        <CardTitle className="text-2xl font-bold text-blue-600 dark:text-blue-400">Emoji Translator</CardTitle>
-        <CardDescription className="text-gray-600 dark:text-gray-300">
-          Transform your plain text into creative and expressive emoji messages
+      <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950 dark:to-indigo-950 rounded-t-lg py-4">
+        <CardTitle className="text-xl md:text-2xl font-bold text-blue-600 dark:text-blue-400">Emoji Translator</CardTitle>
+        <CardDescription className="text-sm text-gray-600 dark:text-gray-300">
+          Transform your text into emoji messages
         </CardDescription>
       </CardHeader>
       
-      <CardContent className="space-y-6 pt-6">
+      <CardContent className="space-y-4 pt-4">
         {apiError && (
           <Alert 
             variant="warning" 
             dismissable 
             onDismiss={() => setApiError(null)}
-            className="mb-4 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800"
+            className="mb-2 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-800 text-xs md:text-sm"
           >
             <AlertTitle>API Error</AlertTitle>
             <AlertDescription>
@@ -334,150 +497,143 @@ export function EmojiConverterForm({ customEmojis = {} }: EmojiConverterFormProp
           </Alert>
         )}
         
-        <div className="space-y-2">
-          <div className="flex justify-between items-center mb-1">
-            <label className="text-sm font-medium text-gray-600 dark:text-gray-300">Input Text</label>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950/50"
-              onClick={handleExampleClick}
-            >
-              <BookOpen className="h-3.5 w-3.5 mr-1" />
-              Use Example
-            </Button>
-          </div>
-          <div className="relative">
-            <Textarea
-              placeholder="Enter your text here..."
-              className="min-h-[120px] resize-y border-blue-200 focus:border-blue-400 focus:ring-blue-400 pr-4 pb-14 dark:border-blue-900 dark:bg-slate-900 dark:focus:border-blue-700 dark:focus:ring-blue-700 dark:placeholder-gray-500"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-            />
-            <div className="absolute bottom-3 right-3">
-              <Button 
-                className="bg-blue-600 hover:bg-blue-700 transition-colors dark:bg-blue-800 dark:hover:bg-blue-700" 
-                onClick={handleConvert}
-                disabled={isLoading || !inputText.trim()}
+        {/* 双栏布局：桌面端并排显示输入和输出，移动端上下堆叠 */}
+        <div className="flex flex-col md:flex-row md:gap-4">
+          {/* 左侧：输入区域 */}
+          <div className="flex-1 space-y-2">
+            <div className="flex justify-between items-center mb-1">
+              <label className="text-sm font-medium text-gray-600 dark:text-gray-300">Input Text</label>
+              <Button
+                variant="ghost"
                 size="sm"
+                className="h-7 text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950/50 px-2"
+                onClick={handleExampleClick}
               >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Translating...
-                  </>
-                ) : (
-                  'Translate'
-                )}
+                <BookOpen className="h-3 w-3 mr-1" />
+                <span className="text-xs">Example</span>
               </Button>
+            </div>
+            <div className="relative">
+          <Textarea
+                placeholder="Enter your text here..."
+                className="min-h-[100px] md:min-h-[180px] resize-y border-blue-200 focus:border-blue-400 focus:ring-blue-400 pr-4 pb-14 dark:border-blue-900 dark:bg-slate-900 dark:focus:border-blue-700 dark:focus:ring-blue-700 dark:placeholder-gray-500 text-sm"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+          />
+              <div className="absolute bottom-3 right-3 flex space-x-2">
+                <Button 
+                  variant="outline"
+                  className="border-blue-300 hover:bg-blue-50 transition-colors dark:border-blue-800 dark:hover:bg-blue-900/30 h-8" 
+                  onClick={() => {
+                    setInputText("");
+                    setOutputText("");
+                    setApiError(null);
+                  }}
+                  size="sm"
+                  disabled={isLoading || !inputText.trim()}
+                >
+                  <RefreshCw className="h-3 w-3 mr-1" />
+                  <span className="text-xs">Clear</span>
+                </Button>
+          <Button 
+                  className="bg-blue-600 hover:bg-blue-700 transition-colors dark:bg-blue-800 dark:hover:bg-blue-700 h-8" 
+            onClick={handleConvert}
+                  disabled={isLoading || !inputText.trim()}
+                  size="sm"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                      <span className="sm:inline hidden text-xs">Translating...</span>
+                      <span className="sm:hidden">...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-xs">Translate</span>
+                    </>
+                  )}
+          </Button>
+        </div>
+                    </div>
+          </div>
+          
+          {/* 右侧：输出区域（始终显示） */}
+          <div className="flex-1 mt-3 md:mt-0">
+            <div className="flex justify-between items-center mb-1">
+              <label className="text-sm font-medium text-gray-600 dark:text-gray-300">Translation Result</label>
+              <div className="flex space-x-1">
+          <Button
+                  variant="ghost"
+            size="sm"
+                  className="h-7 text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950/50 px-1.5"
+                  onClick={() => handleCopy(outputText)}
+                  disabled={!outputText}
+          >
+                  <Copy className="h-3 w-3" />
+          </Button>
+          <Button
+                  variant="ghost"
+            size="sm"
+                  className="h-7 text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950/50 px-1.5"
+            onClick={handleSave}
+                  disabled={!outputText}
+          >
+                  <Save className="h-3 w-3" />
+          </Button>
+          <Button
+                  variant="ghost"
+            size="sm"
+                  className="h-7 text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950/50 px-1.5"
+            onClick={handleShare}
+                  disabled={!outputText}
+                >
+                  <Share2 className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+            
+            <div className="relative">              
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 p-4 rounded-md min-h-[100px] md:min-h-[180px] break-words text-sm md:text-base dark:text-gray-200 whitespace-pre-line border border-blue-100 dark:border-blue-900">
+                {outputText || 
+                  <span className="text-gray-400 dark:text-gray-500 italic text-sm">
+                    Your translation will appear here after you click Translate...
+                  </span>
+                }
+              </div>
             </div>
           </div>
         </div>
         
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-3 block">Translation Mode</label>
+        {/* 翻译模式选择 - 更加紧凑的布局 */}
+        <div className="space-y-1 mt-3">
+          <label className="text-xs font-medium text-gray-600 dark:text-gray-300 block">Translation Mode</label>
           <RadioGroup 
             value={translationMode} 
             onValueChange={(value) => {
               setTranslationMode(value as TranslationMode);
               setOutputText("");
             }}
-            className="flex flex-wrap gap-4"
+            className="flex flex-wrap gap-2"
           >
-            <div className="flex items-center space-x-2 bg-white dark:bg-slate-900 rounded-md border border-blue-200 dark:border-blue-900 px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer">
-              <RadioGroupItem value="emoji-combo" id="emoji-combo" className="text-blue-600 dark:text-blue-400" />
-              <Label htmlFor="emoji-combo" className="cursor-pointer dark:text-gray-300">Emoji Combo</Label>
+            <div className="flex items-center space-x-1 bg-white dark:bg-slate-900 rounded-md border border-blue-200 dark:border-blue-900 px-2 py-1 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer">
+              <RadioGroupItem value="emoji-combo" id="emoji-combo" className="text-blue-600 dark:text-blue-400 h-3 w-3" />
+              <Label htmlFor="emoji-combo" className="cursor-pointer dark:text-gray-300 text-xs">Emoji Combo</Label>
             </div>
-            <div className="flex items-center space-x-2 bg-white dark:bg-slate-900 rounded-md border border-blue-200 dark:border-blue-900 px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer">
-              <RadioGroupItem value="emojify" id="emojify" className="text-blue-600 dark:text-blue-400" />
-              <Label htmlFor="emojify" className="cursor-pointer dark:text-gray-300">Emojify Text</Label>
+            <div className="flex items-center space-x-1 bg-white dark:bg-slate-900 rounded-md border border-blue-200 dark:border-blue-900 px-2 py-1 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer">
+              <RadioGroupItem value="emojify" id="emojify" className="text-blue-600 dark:text-blue-400 h-3 w-3" />
+              <Label htmlFor="emojify" className="cursor-pointer dark:text-gray-300 text-xs">Emojify Text</Label>
             </div>
-            <div className="flex items-center space-x-2 bg-white dark:bg-slate-900 rounded-md border border-blue-200 dark:border-blue-900 px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer">
-              <RadioGroupItem value="xiaohongshu" id="xiaohongshu" className="text-blue-600 dark:text-blue-400" />
-              <Label htmlFor="xiaohongshu" className="cursor-pointer dark:text-gray-300">Line-by-Line Style</Label>
+            <div className="flex items-center space-x-1 bg-white dark:bg-slate-900 rounded-md border border-blue-200 dark:border-blue-900 px-2 py-1 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors cursor-pointer">
+              <RadioGroupItem value="xiaohongshu" id="xiaohongshu" className="text-blue-600 dark:text-blue-400 h-3 w-3" />
+              <Label htmlFor="xiaohongshu" className="cursor-pointer dark:text-gray-300 text-xs">Line-by-Line</Label>
             </div>
           </RadioGroup>
         </div>
         
-        {outputText && (
-          <div className="mt-6 space-y-4">
-            <Tabs 
-              defaultValue="translation-result" 
-              value={activeTab}
-              onValueChange={setActiveTab}
-              className="w-full"
-            >
-              <TabsList className="grid w-full grid-cols-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                <TabsTrigger 
-                  value="translation-result"
-                  className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-900 data-[state=active]:text-blue-700 dark:data-[state=active]:text-blue-400"
-                >
-                  Translation Result
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="translation-result" className="mt-4">
-                <Card className="border-blue-200 dark:border-blue-900">
-                  <CardContent className="pt-6">
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 p-6 rounded-md min-h-[100px] break-words text-lg dark:text-gray-200 whitespace-pre-line">
-                      {outputText}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-        )}
-        
-        <div className="text-xs text-gray-500 dark:text-gray-400 italic mt-2">
-          Note: Translations are provided by emojitell.com. Local translation will be used as a fallback for API connection issues.
+        <div className="text-xs text-gray-500 dark:text-gray-400 italic mt-1">
+          Note: Translations are provided by emojitell.com. Local translation will be used as a fallback.
         </div>
       </CardContent>
-      
-      {outputText && (
-        <CardFooter className="flex flex-wrap justify-end gap-2 pb-6 bg-gradient-to-r from-white to-blue-50 dark:from-slate-900 dark:to-blue-950/30 rounded-b-lg">
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-blue-300 hover:bg-blue-100 hover:text-blue-700 transition-colors dark:border-blue-800 dark:hover:bg-blue-900 dark:hover:text-blue-300 dark:text-gray-300"
-            onClick={() => handleCopy(outputText)}
-          >
-            <Copy className="h-4 w-4 mr-2" />
-            Copy
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-blue-300 hover:bg-blue-100 hover:text-blue-700 transition-colors dark:border-blue-800 dark:hover:bg-blue-900 dark:hover:text-blue-300 dark:text-gray-300"
-            onClick={handleSave}
-          >
-            <Save className="h-4 w-4 mr-2" />
-            Save
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-blue-300 hover:bg-blue-100 hover:text-blue-700 transition-colors dark:border-blue-800 dark:hover:bg-blue-900 dark:hover:text-blue-300 dark:text-gray-300"
-            onClick={handleShare}
-          >
-            <Share2 className="h-4 w-4 mr-2" />
-            Share
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-blue-300 hover:bg-blue-100 hover:text-blue-700 transition-colors dark:border-blue-800 dark:hover:bg-blue-900 dark:hover:text-blue-300 dark:text-gray-300"
-            onClick={() => {
-              setInputText("");
-              setOutputText("");
-              setApiError(null);
-            }}
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Reset
-          </Button>
-        </CardFooter>
-      )}
     </Card>
   );
 }

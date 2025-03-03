@@ -1,0 +1,8 @@
+# robots.txt for emojitell.com
+
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://emojitell.com/sitemap.xml 
