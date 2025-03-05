@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,6 +33,28 @@ interface EmojiConverterFormProps {
   customEmojis?: Record<string, string[]>;
 }
 
+// 创建客户端快捷键指示器组件
+function ShortcutIndicator() {
+  const [mounted, setMounted] = useState(false);
+  const [shortcutKey, setShortcutKey] = useState('Ctrl+↵');
+  
+  useEffect(() => {
+    setMounted(true);
+    // 仅在客户端检测平台
+    const isMac = window.navigator.platform.toLowerCase().indexOf('mac') >= 0;
+    setShortcutKey(isMac ? '⌘+↵' : 'Ctrl+↵');
+  }, []);
+  
+  // 仅在客户端渲染后显示
+  if (!mounted) return null;
+  
+  return (
+    <kbd className="hidden md:inline-flex ml-1 text-[10px] items-center justify-center rounded border border-blue-400 bg-blue-500/30 px-1 text-white">
+      {shortcutKey}
+    </kbd>
+  );
+}
+
 export function EmojiConverterForm({ customEmojis = {} }: EmojiConverterFormProps) {
   const [inputText, setInputText] = useState("");
   const [emojiStyle, setEmojiStyle] = useState<EmojiStyle>("standard");
@@ -43,6 +65,20 @@ export function EmojiConverterForm({ customEmojis = {} }: EmojiConverterFormProp
   const [apiError, setApiError] = useState<string | null>(null);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const { toast } = useToast();
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [isMac, setIsMac] = useState(false);
+
+  // Focus input field on component mount
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+    
+    // Detect if user is on Mac
+    if (typeof window !== 'undefined') {
+      setIsMac(window.navigator.platform.toLowerCase().includes('mac'));
+    }
+  }, []);
 
   // 示例文本
   const examples = {
@@ -204,6 +240,25 @@ export function EmojiConverterForm({ customEmojis = {} }: EmojiConverterFormProp
       setIsLoading(false);
     }
   };
+
+  // 键盘快捷键处理
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 检测Ctrl+Enter (Windows/Linux) 或 Cmd+Enter (Mac)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && inputText.trim() && !isLoading) {
+        e.preventDefault();
+        handleConvert();
+      }
+    };
+
+    // 添加事件监听
+    window.addEventListener('keydown', handleKeyDown);
+
+    // 清理
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [inputText, isLoading]);  // 移除handleConvert依赖，避免循环依赖
 
   // Helper function for xiaohongshu-style translation
   const addEmojiToLines = (text: string, style: EmojiStyle, customEmojis: Record<string, string[]>): string => {
@@ -514,32 +569,43 @@ export function EmojiConverterForm({ customEmojis = {} }: EmojiConverterFormProp
               </Button>
             </div>
             <div className="relative">
-          <Textarea
+              <Textarea
                 placeholder="Enter your text here..."
                 className="min-h-[100px] md:min-h-[180px] resize-y border-blue-200 focus:border-blue-400 focus:ring-blue-400 pr-4 pb-14 dark:border-blue-900 dark:bg-slate-900 dark:focus:border-blue-700 dark:focus:ring-blue-700 dark:placeholder-gray-500 text-sm"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-          />
-              <div className="absolute bottom-3 right-3 flex space-x-2">
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                ref={inputRef}
+              />
+              {/* 左下角的Clear按钮 */}
+              {inputText.trim() && (
                 <Button 
-                  variant="outline"
-                  className="border-blue-300 hover:bg-blue-50 transition-colors dark:border-blue-800 dark:hover:bg-blue-900/30 h-8" 
+                  variant="ghost"
+                  className="absolute bottom-3 left-3 p-1 h-7 w-7 rounded-full hover:bg-blue-50 transition-colors dark:hover:bg-blue-900/30" 
                   onClick={() => {
                     setInputText("");
                     setOutputText("");
                     setApiError(null);
+                    // 将焦点设置回输入框
+                    setTimeout(() => {
+                      if (inputRef.current) {
+                        inputRef.current.focus();
+                      }
+                    }, 0);
                   }}
                   size="sm"
-                  disabled={isLoading || !inputText.trim()}
+                  disabled={isLoading}
+                  title="Clear text"
                 >
-                  <RefreshCw className="h-3 w-3 mr-1" />
-                  <span className="text-xs">Clear</span>
+                  <RefreshCw className="h-3.5 w-3.5" />
                 </Button>
-          <Button 
+              )}
+              <div className="absolute bottom-3 right-3 flex space-x-2">
+                <Button 
                   className="bg-blue-600 hover:bg-blue-700 transition-colors dark:bg-blue-800 dark:hover:bg-blue-700 h-8" 
-            onClick={handleConvert}
+                  onClick={handleConvert}
                   disabled={isLoading || !inputText.trim()}
                   size="sm"
+                  title="Press Ctrl+Enter to translate"
                 >
                   {isLoading ? (
                     <>
@@ -550,11 +616,12 @@ export function EmojiConverterForm({ customEmojis = {} }: EmojiConverterFormProp
                   ) : (
                     <>
                       <span className="text-xs">Translate</span>
+                      <ShortcutIndicator />
                     </>
                   )}
-          </Button>
-        </div>
-                    </div>
+                </Button>
+              </div>
+            </div>
           </div>
           
           {/* 右侧：输出区域（始终显示） */}
