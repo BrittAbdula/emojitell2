@@ -571,7 +571,7 @@ export function EmojiConverterForm({ customEmojis = {} }: EmojiConverterFormProp
             <div className="relative">
               <Textarea
                 placeholder="Enter your text here..."
-                className="min-h-[100px] md:min-h-[180px] resize-y border-blue-200 focus:border-blue-400 focus:ring-blue-400 pr-4 pb-14 dark:border-blue-900 dark:bg-slate-900 dark:focus:border-blue-700 dark:focus:ring-blue-700 dark:placeholder-gray-500 text-sm"
+                className="min-h-[150px] md:min-h-[220px] resize-y border-blue-200 focus:border-blue-400 focus:ring-blue-400 focus-visible:ring-blue-400 focus-visible:ring-offset-0 focus-visible:border-blue-400 focus-visible:outline-none pr-4 pb-14 dark:border-blue-900 dark:bg-slate-900 dark:focus:border-blue-700 dark:focus:ring-blue-700 dark:focus-visible:border-blue-700 dark:focus-visible:ring-blue-700 dark:placeholder-gray-500 text-sm"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 ref={inputRef}
@@ -660,7 +660,13 @@ export function EmojiConverterForm({ customEmojis = {} }: EmojiConverterFormProp
             </div>
             
             <div className="relative">              
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 p-4 rounded-md min-h-[100px] md:min-h-[180px] break-words text-sm md:text-base dark:text-gray-200 whitespace-pre-line border border-blue-100 dark:border-blue-900">
+              <div className={`bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 p-4 rounded-md min-h-[150px] md:min-h-[220px] break-words text-sm md:text-base dark:text-gray-200 whitespace-pre-line border ${
+                isLoading 
+                  ? "border-amber-400 dark:border-amber-600 animate-pulse" 
+                  : outputText 
+                    ? "border-green-400 dark:border-green-600" 
+                    : "border-blue-100 dark:border-blue-900"
+              } transition-colors duration-300`}>
                 {outputText || 
                   <span className="text-gray-400 dark:text-gray-500 italic text-sm">
                     Your translation will appear here after you click Translate...

@@ -99,7 +99,7 @@ export default function RootLayout({
         />
         
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-screen-xl mx-auto px-2 sm:px-4 lg:px-4">
             {children}
           </div>
           <Toaster />

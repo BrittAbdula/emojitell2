@@ -19,8 +19,10 @@ export function Navbar() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo section */}
           <div className="flex items-center space-x-2">
-            <Image src="/logo.png" alt="EmojiTell Logo" width={32} height={32} />
-            <span className="font-bold text-2xl text-blue-600 dark:text-blue-400">EmojiTell</span>
+            <a href="/#" className="flex items-center space-x-2">
+              <Image src="/logo.png" alt="EmojiTell Logo" width={32} height={32} />
+              <span className="font-bold text-2xl text-blue-600 dark:text-blue-400">EmojiTell</span>
+            </a>
           </div>
           
           {/* Desktop Navigation - hidden on mobile */}

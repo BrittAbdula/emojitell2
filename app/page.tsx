@@ -24,7 +24,7 @@ export default function Home() {
       <Navbar />
       
       <main className="flex-1">
-        <section className="w-full py-12 md:py-24 bg-gradient-to-b from-white to-blue-50 dark:from-slate-900 dark:to-blue-950">
+        <section className="w-full py-6 md:py-24 bg-gradient-to-b from-white to-blue-50 dark:from-slate-900 dark:to-blue-950">
           <div className="px-4 md:px-6">
             <div className="flex flex-col items-center space-y-4 text-center mb-12">
               <div className="space-y-3">
@@ -36,7 +36,7 @@ export default function Home() {
                   </h1>
                 </div>
                 <p className="mx-auto max-w-[700px] text-gray-600 dark:text-gray-300 md:text-xl">
-                  Transform your plain text into creative and expressive emoji messages with our <span className="font-semibold">100% free emoji translator</span> — supporting multiple languages including English, Spanish, French, Chinese, and more!
+                  Transform your plain text into creative and expressive emoji messages 
                 </p>
               </div>
             </div>
