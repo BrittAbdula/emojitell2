@@ -182,15 +182,24 @@ export function EmojiConverterForm({ customEmojis = {} }: EmojiConverterFormProp
                 try {
                   // Extract the JSON part
                   const jsonStr = line.trim().substring(6); // Remove 'data: ' prefix
+                  
+                  // Skip the [DONE] marker which indicates end of stream
+                  if (jsonStr.trim() === '[DONE]') {
+                    continue;
+                  }
+                  
                   const data = JSON.parse(jsonStr);
                   
-                  if (data && data.response !== undefined) {
+                  if (data && data.response !== undefined && data.response !== null && data.response !== '') {
                     // Only append the actual response text
                     setOutputText(current => current + data.response);
                   }
                 } catch (e) {
-                  // If JSON parsing fails, just add the text as is
-                  console.error('Error parsing streaming response:', e);
+                  // If JSON parsing fails, check if it's the [DONE] marker
+                  const jsonStr = line.trim().substring(6);
+                  if (jsonStr.trim() !== '[DONE]') {
+                    console.error('Error parsing streaming response:', e);
+                  }
                 }
               }
             }
